@@ -7,6 +7,10 @@ import time, threading, json
 
 class RequestHandler(BaseHTTPRequestHandler):
 	"""Definition of the request handler."""
+
+	workers = []
+	jobs = [] # (hash_data, hash_type) the zero-indexed one is the highest priority (change to Priority Queue Later)
+	cracked = [] # (hash_data, hash_type, plain)
 	def _writeheaders(self, doc):
 		"""Write the HTTP headers for the document. ...etc"""
 		if doc is None:
@@ -28,7 +32,9 @@ class RequestHandler(BaseHTTPRequestHandler):
 		elif filename == "/newjob":
 			return 'newjob'
 		elif filename == '/getjob':
-			return ''
+			return self.getJob()
+		elif filename == '/updatejob':
+			return 'update'
 		else:
 			return None
 	
@@ -44,6 +50,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 			self.wfile.write("json not found")
 		else:
 			self.wfile.write(doc)
+
 	def do_POST(self):
 		doc = self._getdoc(self.path)
 		self._writeheaders(doc)
@@ -58,31 +65,21 @@ class RequestHandler(BaseHTTPRequestHandler):
 		print postvars
 
 	def getStats(self):
-		return
-
+		return json.dumps([("workers",len(self.workers)),("jobs",len(self.jobs)),("cracked",self.cracked)])
+	
+	def getJob(self):
+		# partition the interval
+		return json.dumps([("hash_type","Default"),("hash_data",self.jobs[0][0]),("start",),("end",),("alphabet","Default")]) # get from jobs (list) # hash_type from self.jobs[0][1] later
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 	pass
 
 
 
 
-class Bifrost:
-	host = 'localhost'
-	port = 5852
-	srvr = None
-	workers = []
-
-	def __init__(self, host='localhost', port=5852):
-		self.host = host
-		self.port = port
-		srvr = ThreadingHTTPServer(serveraddr, RequestHandler)
-
-	def serve_forever(self):
-		if srvr:
-			srvr.serve_forever()
 
 
 if __name__ == '__main__':
-	bf = Bifrost()
-	bf.serve_forever()
+	serveraddr = ('localhost', 5852)
+	srvr = ThreadingHTTPServer(serveraddr, RequestHandler)
+	srvr.serve_forever()
 
